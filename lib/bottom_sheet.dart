@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 class BottomSheetCustom extends StatefulWidget {
   final Size size;
-  final void Function() onTakePicture, onRetakePicture;
+  final void Function() onTakePicture, onRetakePicture, onDetectionPlate;
   final bool dataResult;
   final Widget Function(BuildContext, int) itemBuilder;
   final int itemCount;
+  final Widget text;
   const BottomSheetCustom(
       {super.key,
       required this.size,
@@ -13,7 +14,9 @@ class BottomSheetCustom extends StatefulWidget {
       required this.onRetakePicture,
       required this.dataResult,
       required this.itemBuilder,
-      required this.itemCount});
+      required this.itemCount,
+      required this.onDetectionPlate,
+      required this.text});
 
   @override
   State<BottomSheetCustom> createState() => _BottomSheetCustomState();
@@ -47,6 +50,7 @@ class _BottomSheetCustomState extends State<BottomSheetCustom> {
                           .copyWith(fontSize: 24),
                     ),
                   ),
+                  widget.text,
                   Expanded(
                       child: widget.dataResult
                           ? Center(
@@ -62,11 +66,14 @@ class _BottomSheetCustomState extends State<BottomSheetCustom> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       ElevatedButton(
+                          onPressed: widget.onDetectionPlate,
+                          child: const Text('Deteksi Plat')),
+                      ElevatedButton(
                           onPressed: widget.onTakePicture,
                           child: const Text('Take Picture')),
                       ElevatedButton(
                           onPressed: widget.onRetakePicture,
-                          child: const Text('Reset Picture/Ambil Ulang')),
+                          child: const Text('Reset')),
                     ],
                   )),
                 ],
