@@ -30,7 +30,11 @@ class _DetectImageCameraState extends State<DetectImageCamera> {
   final List<String> _prediction = [];
   List<dynamic> cek = [];
   List<dynamic> cekLefts = [];
-
+  String? hasilPlat;
+  List<String> plat = [];
+  List<Map<String, dynamic>> list_crop = [];
+  String? angka;
+  List<String> parts = [];
   @override
   void initState() {
     super.initState();
@@ -68,8 +72,7 @@ class _DetectImageCameraState extends State<DetectImageCamera> {
     // String pathPlateDetection = 'assets/models/';
     String pathObjectDetectionModel =
         'assets/models/alpha_numeric_v1.torchscript';
-    String pathLicenseDetectionModel =
-        'assets/models/license_model_v1.torchscript';
+    String pathLicenseDetectionModel = 'assets/models/best.torchscript';
     try {
       _objectModel = await PytorchLite.loadObjectDetectionModel(
           pathObjectDetectionModel, 36, 640, 640,
@@ -106,6 +109,8 @@ class _DetectImageCameraState extends State<DetectImageCamera> {
   }
 
   Future runObjDetect() async {
+    list_crop.clear();
+    plat.clear();
     final XFile file = await _controller.takePicture();
     ContrastImage = File(file.path);
 
@@ -123,11 +128,6 @@ class _DetectImageCameraState extends State<DetectImageCamera> {
             IOUThershold: 0.2))
         .cast<ResultObjectDetection?>();
 
-    // for (var i in objDetect) {
-    //   print(i!.className);
-    //   print(i.rect.left);
-    // }
-
     cekLefts = objDetect.map((e) {
       return (e!.rect.left);
     }).toList();
@@ -136,12 +136,52 @@ class _DetectImageCameraState extends State<DetectImageCamera> {
         return (e.className);
       }
     }).toList();
-    // for (var i in cek) {
-    //   print(i);
-    // }
+    cekLefts.sort();
+
+    var a = cekLefts.take(cek.length).toList();
+
+    a.asMap().forEach((index, element) {
+      objDetect.asMap().forEach((key, value) {
+        if (value!.rect.left == element && value.score >= 0.76) {
+          list_crop.add({
+            'name': value.className,
+            'left': value.rect.left,
+            'top': value.rect.top,
+            'bottom': value.rect.bottom,
+            'right': value.rect.right,
+          });
+        }
+      });
+    });
+
+    for (var i in list_crop) {
+      plat.add(i['name'].toString());
+    }
 
     setState(() {
       dataResult = true;
+      hasilPlat = plat.join();
+      var azs = hasilPlat!.codeUnits.where((e) => e != 13).toList();
+
+      hasilPlat = String.fromCharCodes(azs);
+
+      RegExp exp = RegExp(r'\d');
+
+      parts = hasilPlat!
+          .splitMapJoin(
+            RegExp(r'[a-zA-Z]'),
+            onMatch: (value) => '${value[0]}',
+            onNonMatch: (p0) => '',
+          )
+          .split('');
+      var numbers = hasilPlat?.splitMapJoin(exp,
+          onMatch: (value) => '${value[0]}', onNonMatch: (value) => '');
+
+      if (numbers != null) {
+        angka = numbers;
+      } else {
+        print('Angka tidak ditemukan');
+      }
     });
   }
 
@@ -161,7 +201,7 @@ class _DetectImageCameraState extends State<DetectImageCamera> {
   }
 
   bool flash = false;
-  List<Map<String, dynamic>> list_crop = [];
+  List<Map<String, dynamic>> listCrop = [];
 
   @override
   Widget build(BuildContext context) {
@@ -176,38 +216,22 @@ class _DetectImageCameraState extends State<DetectImageCamera> {
     if (!_controller.value.isInitialized) {
       return Container();
     }
-    // cek.asMap().forEach((key, value) {
-    //   // print('key: $key, value: $value');
-    //   if (value != null) {
-    //     print('key: $key, value: $value');
-    //   }
-    // });
 
-    // cek[1].sort();
-    var a = cekLefts.take(cek.length).toList();
-    list_crop.clear();
-    a.asMap().forEach((index, element) {
-      objDetect.asMap().forEach((key, value) {
-        if (value!.rect.left == element && value.score >= 0.73) {
-          list_crop.add({
-            'name': value.className,
-            'left': value.rect.left,
-            'top': value.rect.top,
-            'bottom': value.rect.bottom,
-            'right': value.rect.right,
-          });
-          // print('key: $index, value: $element');
-          // print('key: $key, value: ${value.className}');
-        }
-      });
-    });
+    // ///split angka dan numeric
+    // String plat1 = 'R4111SN';
+    // RegExp exp = RegExp(r'\d+');
+    // List<String> parts1 = hasilPlat!.split(RegExp(r'(\d+)'));
 
-    List<String> plat = [];
-    for (var i in list_crop) {
-      plat.add(i['name'].toString());
-    }
+    // var match = exp.firstMatch(hasilPlat!);
+    // print(plat);
 
-    var t = plat.join();
+    // if (match != null) {
+    //   String? oke = match.group(0);
+    //   print(oke); // Output: 4111
+    //   print(parts1);
+    // } else {
+    //   print('Angka tidak ditemukan');
+    // }
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -240,7 +264,7 @@ class _DetectImageCameraState extends State<DetectImageCamera> {
                   ? Image.file(
                       image!,
                     )
-                  : GridTile(child: renderBoxImage(image!, objDetect)),
+                  : GridTile(child: renderBoxImage(image!, licenseDetect)),
           BottomSheetCustom(
               size: size,
               onDetectionPlate: () async {
@@ -254,6 +278,11 @@ class _DetectImageCameraState extends State<DetectImageCamera> {
                 setState(() {
                   image = null;
                   dataResult = false;
+                  plat.clear();
+                  hasilPlat = null;
+                  list_crop.clear();
+                  parts.clear();
+                  angka = null;
                 });
               },
               onTakePicture: () async {
@@ -264,9 +293,19 @@ class _DetectImageCameraState extends State<DetectImageCamera> {
                 await runObjDetect();
                 // await runLicenseDetect();
               },
-              text: Text(t),
+              text: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(hasilPlat == null ? '' : hasilPlat!),
+                  Text(parts.isEmpty ? 'kosong' : 'Dpn:${parts.first}'),
+                  Text(angka == null ? '' : angka!),
+                  Text(hasilPlat == null
+                      ? 'ko'
+                      : 'Belakang: ${parts.last + parts[parts.length - 2]}')
+                ],
+              ),
               dataResult: true,
-              itemCount: plat.length,
+              itemCount: plat == null ? 0 : plat.length,
               itemBuilder: (context, index) {
                 return Center(
                     child: Text(
